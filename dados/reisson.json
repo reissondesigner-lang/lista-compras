@@ -9,7 +9,7 @@
     },
     {
       "comprou": false,
-      "produto": "",
+      "produto": "f",
       "desc": "",
       "qtde": 1,
       "valor": 0
