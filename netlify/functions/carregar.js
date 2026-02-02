@@ -1,22 +1,47 @@
-exports.handler = async (event) => {
-  const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+const https = require('https');
 
+exports.handler = async (event) => {
   const usuario = event.queryStringParameters.usuario;
 
   const owner = "reissondesigner-lang";
   const repo = "lista-compras";
   const path = `dados/${usuario}.json`;
 
-  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-
-  const res = await fetch(url);
-
-  if (res.status !== 200) {
-    return { statusCode: 200, body: JSON.stringify({ itens: [], limite: 0 }) };
+  function request(options) {
+    return new Promise((resolve, reject) => {
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => resolve({ status: res.statusCode, data }));
+      });
+      req.on('error', reject);
+      req.end();
+    });
   }
 
-  const data = await res.json();
-  const conteudo = JSON.parse(Buffer.from(data.content, 'base64').toString());
+  const options = {
+    hostname: 'api.github.com',
+    path: `/repos/${owner}/${repo}/contents/${path}`,
+    method: 'GET',
+    headers: {
+      'User-Agent': 'netlify-function'
+    }
+  };
 
-  return { statusCode: 200, body: JSON.stringify(conteudo) };
+  const resposta = await request(options);
+
+  if (resposta.status !== 200) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ itens: [], limite: 0 })
+    };
+  }
+
+  const json = JSON.parse(resposta.data);
+  const conteudo = JSON.parse(Buffer.from(json.content, 'base64').toString());
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify(conteudo)
+  };
 };
