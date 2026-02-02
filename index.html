@@ -153,7 +153,6 @@ const totalListaEl = document.getElementById("totalLista");
 const totalCompradoEl = document.getElementById("totalComprado");
 const faltaEl = document.getElementById("falta");
 
-  
 function formatar(v){
   return v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 }
@@ -187,6 +186,7 @@ function calcular(){
 
 function render(){
   tbody.innerHTML="";
+
   itens.forEach((item,index)=>{
     const tr=document.createElement("tr");
     if(item.comprou) tr.classList.add("comprado");
@@ -197,18 +197,45 @@ function render(){
       <td><input value="${item.desc}"></td>
       <td><input type="number" value="${item.qtde}"></td>
       <td><input type="number" step="0.01" value="${item.valor}"></td>
-      <td>${formatar(item.qtde*item.valor)}</td>
+      <td class="total">${formatar(item.qtde*item.valor)}</td>
     `;
 
     const inp=tr.querySelectorAll("input");
-    inp[0].onchange=e=>{itens[index].comprou=e.target.checked;salvar();render();};
-    inp[1].oninput=e=>{itens[index].produto=e.target.value;salvar();};
-    inp[2].oninput=e=>{itens[index].desc=e.target.value;salvar();};
-    inp[3].oninput=e=>{itens[index].qtde=parseFloat(e.target.value)||0;salvar();render();};
-    inp[4].oninput=e=>{itens[index].valor=parseFloat(e.target.value)||0;salvar();render();};
+    const totalTd=tr.querySelector(".total");
+
+    inp[0].onchange=e=>{
+      itens[index].comprou=e.target.checked;
+      salvar();
+      render();
+    };
+
+    inp[1].oninput=e=>{
+      itens[index].produto=e.target.value;
+      salvar();
+    };
+
+    inp[2].oninput=e=>{
+      itens[index].desc=e.target.value;
+      salvar();
+    };
+
+    inp[3].oninput=e=>{
+      itens[index].qtde=parseFloat(e.target.value)||0;
+      totalTd.textContent=formatar(itens[index].qtde*itens[index].valor);
+      calcular();
+      salvar();
+    };
+
+    inp[4].oninput=e=>{
+      itens[index].valor=parseFloat(e.target.value)||0;
+      totalTd.textContent=formatar(itens[index].qtde*itens[index].valor);
+      calcular();
+      salvar();
+    };
 
     tbody.appendChild(tr);
   });
+
   calcular();
 }
 
@@ -247,4 +274,3 @@ if ('serviceWorker' in navigator) {
 
 </body>
 </html>
-
