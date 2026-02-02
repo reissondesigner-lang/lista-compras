@@ -1,7 +1,7 @@
 {
   "itens": [
     {
-      "comprou": false,
+      "comprou": true,
       "produto": "teste",
       "desc": "",
       "qtde": 0,
