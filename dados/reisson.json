@@ -1,4 +1,12 @@
 {
-  "itens": [],
+  "itens": [
+    {
+      "comprou": false,
+      "produto": "",
+      "desc": "",
+      "qtde": 1,
+      "valor": 0
+    }
+  ],
   "limite": 0
 }
