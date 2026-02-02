@@ -8,7 +8,7 @@
       "valor": 0
     },
     {
-      "comprou": false,
+      "comprou": true,
       "produto": "fu",
       "desc": "",
       "qtde": 1,
