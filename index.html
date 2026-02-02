@@ -149,6 +149,11 @@ const tbody=document.getElementById("tbody");
 const limiteInput=document.getElementById("limite");
 const tabela=document.getElementById("tabela");
 
+const totalListaEl = document.getElementById("totalLista");
+const totalCompradoEl = document.getElementById("totalComprado");
+const faltaEl = document.getElementById("falta");
+
+  
 function formatar(v){
   return v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 }
@@ -242,3 +247,4 @@ if ('serviceWorker' in navigator) {
 
 </body>
 </html>
+
