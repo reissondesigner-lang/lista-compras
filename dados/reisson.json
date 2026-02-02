@@ -2,7 +2,7 @@
   "itens": [
     {
       "comprou": false,
-      "produto": "",
+      "produto": "te",
       "desc": "",
       "qtde": 1,
       "valor": 0
