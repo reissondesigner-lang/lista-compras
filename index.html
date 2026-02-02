@@ -14,18 +14,8 @@ body{
   background:linear-gradient(135deg,#0b1f14,#123524,#1c4d33);
   color:#e8fff3;
   padding:10px;
-  animation:fadeIn .6s ease-in;
 }
-
-@keyframes fadeIn{
-  from{opacity:0;transform:translateY(10px);}
-  to{opacity:1;transform:translateY(0);}
-}
-
-h1{
-  text-align:center;
-  margin-bottom:15px;
-}
+h1{text-align:center;}
 
 .painel{
   display:grid;
@@ -42,22 +32,10 @@ h1{
   border:1px solid rgba(255,255,255,0.15);
 }
 
-.card input{
-  width:100%;
-  padding:6px;
-  font-size:16px;
-  text-align:center;
-  background:transparent;
-  border:none;
-  color:#e8fff3;
-}
-
 table{
   width:100%;
   border-collapse:collapse;
   background:rgba(255,255,255,0.04);
-  border-radius:10px;
-  overflow:hidden;
 }
 
 th,td{
@@ -77,7 +55,6 @@ input{
   border:none;
   color:#e8fff3;
   text-align:center;
-  font-size:14px;
 }
 
 button{
@@ -89,37 +66,38 @@ button{
   border-radius:8px;
   font-weight:bold;
   cursor:pointer;
-  transition:.3s;
 }
 
-#add{
-  background:#38d27a;
-  color:#062b17;
-}
+#add{ background:#38d27a; color:#062b17; }
+#limpar{ background:#1f7a4c; color:white; }
 
-#limpar{
-  background:#1f7a4c;
-  color:white;
-}
-
-button:hover{
-  transform:scale(1.03);
-}
-
-/* animação ao limpar */
 @keyframes flashClean {
   0% { background:rgba(56,210,122,0.0); }
   50% { background:rgba(56,210,122,0.25); }
   100% { background:transparent; }
 }
+.flash{ animation:flashClean .6s ease; }
 
-.flash{
-  animation:flashClean .6s ease;
+#login{
+  position:fixed;
+  inset:0;
+  background:#0b1f14;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+  gap:10px;
 }
 </style>
 </head>
 
 <body>
+
+<div id="login">
+  <h2>Digite seu usuário</h2>
+  <input id="usuarioInput" placeholder="ex: reisson"/>
+  <button onclick="entrar()">Entrar</button>
+</div>
 
 <h1>🛒 Lista de Compras</h1>
 
@@ -163,35 +141,43 @@ button:hover{
 <button id="limpar">🧹 Limpar Comprados</button>
 
 <script>
-const tbody = document.getElementById("tbody");
-const limiteInput = document.getElementById("limite");
-const tabela = document.getElementById("tabela");
+let usuario="";
+let itens=[];
+let limite=0;
 
-let itens = JSON.parse(localStorage.getItem("itens")) || [];
-let limite = parseFloat(localStorage.getItem("limite")) || 0;
-limiteInput.value = limite;
-
-function salvar(){
-  localStorage.setItem("itens", JSON.stringify(itens));
-  localStorage.setItem("limite", limite);
-}
+const tbody=document.getElementById("tbody");
+const limiteInput=document.getElementById("limite");
+const tabela=document.getElementById("tabela");
 
 function formatar(v){
   return v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 }
 
-function calcular(){
-  let totalLista=0, totalComprado=0;
+async function salvar(){
+  await fetch('/.netlify/functions/salvar',{
+    method:'POST',
+    body:JSON.stringify({usuario,itens,limite})
+  });
+}
 
+async function carregar(){
+  const r=await fetch(`/.netlify/functions/carregar?usuario=${usuario}`);
+  const dados=await r.json();
+  itens=dados.itens||[];
+  limite=dados.limite||0;
+  limiteInput.value=limite;
+}
+
+function calcular(){
+  let totalLista=0,totalComprado=0;
   itens.forEach(i=>{
     const t=i.qtde*i.valor;
     totalLista+=t;
     if(i.comprou) totalComprado+=t;
   });
-
-  document.getElementById("totalLista").textContent=formatar(totalLista);
-  document.getElementById("totalComprado").textContent=formatar(totalComprado);
-  document.getElementById("falta").textContent=formatar(limite-totalComprado);
+  totalListaEl.textContent=formatar(totalLista);
+  totalCompradoEl.textContent=formatar(totalComprado);
+  faltaEl.textContent=formatar(limite-totalComprado);
 }
 
 function render(){
@@ -210,7 +196,6 @@ function render(){
     `;
 
     const inp=tr.querySelectorAll("input");
-
     inp[0].onchange=e=>{itens[index].comprou=e.target.checked;salvar();render();};
     inp[1].oninput=e=>{itens[index].produto=e.target.value;salvar();};
     inp[2].oninput=e=>{itens[index].desc=e.target.value;salvar();};
@@ -219,7 +204,6 @@ function render(){
 
     tbody.appendChild(tr);
   });
-
   calcular();
 }
 
@@ -232,10 +216,8 @@ document.getElementById("add").onclick=()=>{
 document.getElementById("limpar").onclick=()=>{
   itens.forEach(i=>i.comprou=false);
   salvar();
-
   tabela.classList.add("flash");
   setTimeout(()=>tabela.classList.remove("flash"),600);
-
   render();
 };
 
@@ -245,9 +227,14 @@ limiteInput.oninput=e=>{
   calcular();
 };
 
-render();
+async function entrar(){
+  usuario=document.getElementById("usuarioInput").value;
+  if(!usuario) return;
+  await carregar();
+  render();
+  document.getElementById("login").style.display="none";
+}
 
-// registro do service worker (PWA)
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('service-worker.js');
 }
