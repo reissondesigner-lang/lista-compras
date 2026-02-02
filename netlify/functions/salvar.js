@@ -1,40 +1,67 @@
-exports.handler = async (event) => {
-  const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+const https = require('https');
 
+exports.handler = async (event) => {
   const { usuario, itens, limite } = JSON.parse(event.body);
 
   const token = process.env.GITHUB_TOKEN;
-  const repo = "lista-compras";
   const owner = "reissondesigner-lang";
+  const repo = "lista-compras";
   const path = `dados/${usuario}.json`;
-
-  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
 
   const conteudo = Buffer.from(JSON.stringify({ itens, limite }, null, 2)).toString('base64');
 
-  // pegar SHA se existir
-  const atual = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  const optionsGet = {
+    hostname: 'api.github.com',
+    path: `/repos/${owner}/${repo}/contents/${path}`,
+    method: 'GET',
+    headers: {
+      'User-Agent': 'netlify-function',
+      'Authorization': `Bearer ${token}`
+    }
+  };
 
-  let sha = null;
-  if (atual.status === 200) {
-    const data = await atual.json();
-    sha = data.sha;
+  function request(options, body = null) {
+    return new Promise((resolve, reject) => {
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => resolve({ status: res.statusCode, data }));
+      });
+      req.on('error', reject);
+      if (body) req.write(body);
+      req.end();
+    });
   }
 
-  await fetch(url, {
-    method: "PUT",
+  const atual = await request(optionsGet);
+  let sha = null;
+
+  if (atual.status === 200) {
+    const json = JSON.parse(atual.data);
+    sha = json.sha;
+  }
+
+  const optionsPut = {
+    hostname: 'api.github.com',
+    path: `/repos/${owner}/${repo}/contents/${path}`,
+    method: 'PUT',
     headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      message: `Salvando lista de ${usuario}`,
-      content: conteudo,
-      sha
-    })
+      'User-Agent': 'netlify-function',
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  };
+
+  const bodyPut = JSON.stringify({
+    message: `Salvando lista de ${usuario}`,
+    content: conteudo,
+    sha
   });
 
-  return { statusCode: 200, body: "ok" };
+  await request(optionsPut, bodyPut);
+
+  return {
+    statusCode: 200,
+    body: "ok"
+  };
 };
