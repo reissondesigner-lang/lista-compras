@@ -52,12 +52,14 @@ table{
   width:100%;
   border-collapse:collapse;
   background:rgba(255,255,255,0.04);
+  table-layout:fixed;
 }
 
 th,td{
   border:1px solid rgba(255,255,255,0.12);
   padding:6px;
   text-align:center;
+  overflow:hidden;
 }
 
 tr.comprado{
@@ -67,12 +69,20 @@ tr.comprado{
 }
 
 input{
-  width:90%;
+  width:100%;
   background:transparent;
   border:none;
   color:#e8fff3;
   text-align:center;
+  box-sizing:border-box;
 }
+
+/* larguras das colunas */
+th:nth-child(1), td:nth-child(1){ width:6%; }
+th:nth-child(4), td:nth-child(4){ width:10%; }
+th:nth-child(5), td:nth-child(5){ width:14%; }
+th:nth-child(6), td:nth-child(6){ width:16%; }
+th:nth-child(7), td:nth-child(7){ width:8%; }
 
 button{
   margin-top:10px;
@@ -88,15 +98,14 @@ button{
 #add{ background:#38d27a; color:#062b17; }
 #limpar{ background:#1f7a4c; color:white; }
 
-.del,.dup{
+.del{
+  background:#c0392b;
+  color:white;
   border:none;
   border-radius:6px;
   cursor:pointer;
   padding:4px 8px;
-  margin:2px;
 }
-.del{ background:#c0392b;color:white; }
-.dup{ background:#2980b9;color:white; }
 
 #login{
   position:fixed;
@@ -134,7 +143,7 @@ button{
 <table>
 <thead>
 <tr>
-<th>✔</th><th>Produto</th><th>Desc</th><th>Qtde</th><th>Valor</th><th>Total</th><th>📄</th><th>🗑</th>
+<th>✔</th><th>Produto</th><th>Desc</th><th>Qtde</th><th>Valor</th><th>Total</th><th>🗑</th>
 </tr>
 </thead>
 <tbody id="tbody"></tbody>
@@ -214,14 +223,12 @@ function criarLinha(item,i){
   <td><input type="number" value="${item.qtde||1}"></td>
   <td><input type="number" step="0.01" value="${item.valor||0}"></td>
   <td class="total">${formatar(item.qtde*item.valor)}</td>
-  <td><button class="dup">📄</button></td>
   <td><button class="del">❌</button></td>
   `;
 
   const inputs=tr.querySelectorAll("input");
   const totalCell=tr.querySelector(".total");
   const del=tr.querySelector(".del");
-  const dup=tr.querySelector(".dup");
 
   function atualizar(){
     totalCell.textContent=formatar(item.qtde*item.valor);
@@ -255,22 +262,11 @@ function criarLinha(item,i){
     }
   };
 
-  dup.onclick=()=>{
-    itens.splice(i+1,0,{...item,comprou:false});
-    focarNovo=true;
-    salvar(); render();
-  };
-
-  tr.ondragstart=()=>tr.dataset.index=i;
-  tr.ondragover=e=>e.preventDefault();
-  tr.ondrop=e=>{
-    e.preventDefault();
-    const from=+e.dataTransfer.getData("text")||i;
-  };
-
   tr.addEventListener("dragstart",e=>{
     e.dataTransfer.setData("text/plain",i);
   });
+
+  tr.addEventListener("dragover",e=>e.preventDefault());
 
   tr.addEventListener("drop",e=>{
     e.preventDefault();
@@ -334,4 +330,3 @@ document.getElementById("saveBtn").onclick=salvar;
 </script>
 </body>
 </html>
-
