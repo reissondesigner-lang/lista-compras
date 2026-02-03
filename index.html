@@ -79,11 +79,16 @@ input{
 
 /* larguras das colunas */
 th:nth-child(1), td:nth-child(1){ width:6%; }
-th:nth-child(4), td:nth-child(4){ width:10%; }
-th:nth-child(5), td:nth-child(5){ width:14%; }
-th:nth-child(6), td:nth-child(6){ width:16%; }
+th:nth-child(4), td:nth-child(4){ width:7%; }
+th:nth-child(5), td:nth-child(5){ width:10%; }
+th:nth-child(6), td:nth-child(6){ width:14%; }
 th:nth-child(7), td:nth-child(7){ width:8%; }
 
+  td:nth-child(4) input,
+  td:nth-child(5) input{
+    padding:0;
+    font-size:14px;
+  }
 button{
   margin-top:10px;
   width:100%;
@@ -330,4 +335,5 @@ document.getElementById("saveBtn").onclick=salvar;
 </script>
 </body>
 </html>
+
 
