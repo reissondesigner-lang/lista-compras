@@ -61,8 +61,9 @@ th,td{
 }
 
 tr.comprado{
-  opacity:.5;
+  opacity:.4;
   text-decoration:line-through;
+  background:rgba(255,255,255,0.05);
 }
 
 input{
@@ -73,14 +74,29 @@ input{
   text-align:center;
 }
 
-.del{
-  background:#c0392b;
-  color:white;
+button{
+  margin-top:10px;
+  width:100%;
+  padding:12px;
+  font-size:16px;
+  border:none;
+  border-radius:8px;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+#add{ background:#38d27a; color:#062b17; }
+#limpar{ background:#1f7a4c; color:white; }
+
+.del,.dup{
   border:none;
   border-radius:6px;
   cursor:pointer;
   padding:4px 8px;
+  margin:2px;
 }
+.del{ background:#c0392b;color:white; }
+.dup{ background:#2980b9;color:white; }
 
 #login{
   position:fixed;
@@ -92,27 +108,6 @@ input{
   flex-direction:column;
   gap:10px;
   z-index:30;
-}
-
-  button{
-  margin-top:10px;
-  width:100%;
-  padding:12px;
-  font-size:16px;
-  border:none;
-  border-radius:8px;
-  font-weight:bold;
-  cursor:pointer;
-}
-
-#add{ 
-  background:#38d27a; 
-  color:#062b17; 
-}
-
-#limpar{ 
-  background:#1f7a4c; 
-  color:white; 
 }
 </style>
 </head>
@@ -157,6 +152,7 @@ input{
       <th>Qtde</th>
       <th>Valor</th>
       <th>Total</th>
+      <th>📄</th>
       <th>🗑</th>
     </tr>
   </thead>
@@ -168,28 +164,25 @@ input{
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot }
+import { getFirestore, doc, setDoc, onSnapshot }
   from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBPVGnlFkcj1-DwSJAerYSltoo8YfWnHG8",
   authDomain: "lista-comprars.firebaseapp.com",
-  projectId: "lista-comprars",
-  storageBucket: "lista-comprars.appspot.com",
-  messagingSenderId: "669560187933",
-  appId: "1:669560187933:web:bf6b4d7426a89b420f6af4"
+  projectId: "lista-comprars"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let usuario = "";
-let itens = [];
-let limite = 0;
-let ignorarSnapshot = false;
+let usuario="", itens=[], limite=0, ignorarSnapshot=false;
 
-const tbody = document.getElementById("tbody");
-const limiteInput = document.getElementById("limite");
+const tbody=document.getElementById("tbody");
+const limiteInput=document.getElementById("limite");
+const totalLista=document.getElementById("totalLista");
+const totalComprado=document.getElementById("totalComprado");
+const falta=document.getElementById("falta");
 
 function formatar(v){
   return v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
@@ -205,12 +198,13 @@ function calcular(){
   totalLista.textContent=formatar(total);
   totalComprado.textContent=formatar(comprado);
   falta.textContent=formatar(limite-comprado);
+  falta.style.color = (limite && comprado>limite) ? "#ff6b6b" : "#e8fff3";
 }
 
 async function salvar(){
   if(!usuario) return;
-  ignorarSnapshot = true;
-  await setDoc(doc(db,"usuarios",usuario),{ itens, limite });
+  ignorarSnapshot=true;
+  await setDoc(doc(db,"usuarios",usuario),{itens,limite});
   setTimeout(()=>ignorarSnapshot=false,500);
 }
 
@@ -229,39 +223,69 @@ function ouvir(){
 
 function criarLinha(item,i){
   const tr=document.createElement("tr");
+  tr.draggable=true;
   if(item.comprou) tr.classList.add("comprado");
 
   tr.innerHTML=`
     <td><input type="checkbox" ${item.comprou?"checked":""}></td>
     <td><input value="${item.produto||""}"></td>
     <td><input value="${item.desc||""}"></td>
-    <td><input type="number" value="${item.qtde||0}"></td>
+    <td><input type="number" value="${item.qtde||1}"></td>
     <td><input type="number" step="0.01" value="${item.valor||0}"></td>
     <td class="total">${formatar(item.qtde*item.valor)}</td>
+    <td><button class="dup">📄</button></td>
     <td><button class="del">❌</button></td>
   `;
 
   const inputs=tr.querySelectorAll("input");
   const totalCell=tr.querySelector(".total");
   const del=tr.querySelector(".del");
+  const dup=tr.querySelector(".dup");
 
   function atualizar(){
     totalCell.textContent=formatar(item.qtde*item.valor);
     calcular();
   }
 
-  inputs[0].onchange=e=>{ item.comprou=e.target.checked; salvar(); };
+  inputs[0].onchange=e=>{
+    item.comprou=e.target.checked;
+    tr.classList.toggle("comprado",item.comprou);
+    calcular();
+    salvar();
+  };
+
   inputs[1].oninput=e=>{ item.produto=e.target.value; salvar(); };
   inputs[2].oninput=e=>{ item.desc=e.target.value; salvar(); };
-  inputs[3].oninput=e=>{ item.qtde=+e.target.value||0; atualizar(); salvar(); };
-  inputs[4].oninput=e=>{ item.valor=+e.target.value||0; atualizar(); salvar(); };
+
+  inputs[3].oninput=e=>{
+    item.qtde=Math.max(1,+e.target.value||1);
+    atualizar(); salvar();
+  };
+
+  inputs[4].oninput=e=>{
+    item.valor=Math.max(0,+e.target.value||0);
+    atualizar(); salvar();
+  };
 
   del.onclick=()=>{
     if(confirm("Apagar este item?")){
       itens.splice(i,1);
-      salvar();
-      render();
+      salvar(); render();
     }
+  };
+
+  dup.onclick=()=>{
+    itens.splice(i+1,0,{...item,comprou:false});
+    salvar(); render();
+  };
+
+  // drag
+  tr.ondragstart=()=>tr.classList.add("dragging");
+  tr.ondragend=()=>{
+    tr.classList.remove("dragging");
+    const rows=[...tbody.querySelectorAll("tr")];
+    itens=rows.map((r,idx)=>itens[rows.indexOf(r)]);
+    salvar();
   };
 
   return tr;
@@ -269,11 +293,22 @@ function criarLinha(item,i){
 
 function render(){
   tbody.innerHTML="";
+
+  itens.sort((a,b)=>{
+    if(a.comprou!==b.comprou) return a.comprou?1:-1;
+    return (a.produto||"").localeCompare(b.produto||"");
+  });
+
   itens.forEach((it,i)=>tbody.appendChild(criarLinha(it,i)));
   calcular();
+
+  setTimeout(()=>{
+    const ultimo=tbody.querySelector("tr:last-child input:nth-child(2)");
+    if(ultimo) ultimo.focus();
+  },50);
 }
 
-document.getElementById("entrarBtn").onclick=async()=>{
+document.getElementById("entrarBtn").onclick=()=>{
   usuario=usuarioInput.value.trim().toLowerCase();
   if(!usuario) return alert("Digite um nome");
   document.getElementById("login").style.display="none";
@@ -282,25 +317,22 @@ document.getElementById("entrarBtn").onclick=async()=>{
 
 document.getElementById("add").onclick=()=>{
   itens.push({comprou:false,produto:"",desc:"",qtde:1,valor:0});
-  salvar();
-  render();
+  salvar(); render();
 };
 
 document.getElementById("limpar").onclick=()=>{
-  itens.forEach(i=>i.comprou=false);
-  salvar();
-  render();
+  if(confirm("Desmarcar todos os itens comprados?")){
+    itens.forEach(i=>i.comprou=false);
+    salvar(); render();
+  }
 };
 
 limiteInput.oninput=e=>{
   limite=+e.target.value||0;
-  calcular();
-  salvar();
+  calcular(); salvar();
 };
 
 document.getElementById("saveBtn").onclick=salvar;
 </script>
-
 </body>
 </html>
-
