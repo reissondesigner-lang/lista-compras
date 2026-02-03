@@ -299,13 +299,6 @@ function render(){
   itens.forEach((it,i)=>tbody.appendChild(criarLinha(it,i)));
   calcular();
 
-  if(focarNovo){
-    setTimeout(()=>{
-      const ultimo=tbody.querySelector("tr:last-child td:nth-child(2) input");
-      if(ultimo) ultimo.focus();
-      focarNovo=false;
-    },50);
-  }
 }
 
 document.getElementById("entrarBtn").onclick=()=>{
@@ -337,7 +330,3 @@ document.getElementById("saveBtn").onclick=salvar;
 </script>
 </body>
 </html>
-
-
-
-
