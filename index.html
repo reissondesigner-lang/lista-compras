@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Lista de Compras</title>
 
-<link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#38d27a" />
 
 <style>
@@ -87,6 +86,7 @@ button{
   align-items:center;
   flex-direction:column;
   gap:10px;
+  z-index:10;
 }
 </style>
 </head>
@@ -141,13 +141,13 @@ button{
 <button id="limpar">🧹 Limpar Comprados</button>
 
 <script>
-let usuario="";
-let itens=[];
-let limite=0;
+let usuario = "";
+let itens = [];
+let limite = 0;
 
-const tbody=document.getElementById("tbody");
-const limiteInput=document.getElementById("limite");
-const tabela=document.getElementById("tabela");
+const tbody = document.getElementById("tbody");
+const limiteInput = document.getElementById("limite");
+const tabela = document.getElementById("tabela");
 
 const totalListaEl = document.getElementById("totalLista");
 const totalCompradoEl = document.getElementById("totalComprado");
@@ -157,19 +157,21 @@ function formatar(v){
   return v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 }
 
-async function salvar(){
-  await fetch('/.netlify/functions/salvar',{
-    method:'POST',
-    body:JSON.stringify({usuario,itens,limite})
-  });
+function salvar(){
+  localStorage.setItem(
+    "lista_"+usuario,
+    JSON.stringify({ itens, limite })
+  );
 }
 
-async function carregar(){
-  const r=await fetch(`/.netlify/functions/carregar?usuario=${usuario}`);
-  const dados=await r.json();
-  itens=dados.itens||[];
-  limite=dados.limite||0;
-  limiteInput.value=limite;
+function carregar(){
+  const dados = JSON.parse(
+    localStorage.getItem("lista_"+usuario)
+  ) || {};
+
+  itens = dados.itens || [];
+  limite = dados.limite || 0;
+  limiteInput.value = limite;
 }
 
 function calcular(){
@@ -186,7 +188,6 @@ function calcular(){
 
 function render(){
   tbody.innerHTML="";
-
   itens.forEach((item,index)=>{
     const tr=document.createElement("tr");
     if(item.comprou) tr.classList.add("comprado");
@@ -205,44 +206,32 @@ function render(){
 
     inp[0].onchange=e=>{
       itens[index].comprou=e.target.checked;
-      salvar();
-      render();
+      salvar(); render();
     };
 
-    inp[1].oninput=e=>{
-      itens[index].produto=e.target.value;
-      salvar();
-    };
-
-    inp[2].oninput=e=>{
-      itens[index].desc=e.target.value;
-      salvar();
-    };
+    inp[1].oninput=e=>{ itens[index].produto=e.target.value; salvar(); };
+    inp[2].oninput=e=>{ itens[index].desc=e.target.value; salvar(); };
 
     inp[3].oninput=e=>{
       itens[index].qtde=parseFloat(e.target.value)||0;
       totalTd.textContent=formatar(itens[index].qtde*itens[index].valor);
-      calcular();
-      salvar();
+      calcular(); salvar();
     };
 
     inp[4].oninput=e=>{
       itens[index].valor=parseFloat(e.target.value)||0;
       totalTd.textContent=formatar(itens[index].qtde*itens[index].valor);
-      calcular();
-      salvar();
+      calcular(); salvar();
     };
 
     tbody.appendChild(tr);
   });
-
   calcular();
 }
 
 document.getElementById("add").onclick=()=>{
   itens.push({comprou:false,produto:"",desc:"",qtde:1,valor:0});
-  salvar();
-  render();
+  salvar(); render();
 };
 
 document.getElementById("limpar").onclick=()=>{
@@ -255,20 +244,15 @@ document.getElementById("limpar").onclick=()=>{
 
 limiteInput.oninput=e=>{
   limite=parseFloat(e.target.value)||0;
-  salvar();
-  calcular();
+  salvar(); calcular();
 };
 
-async function entrar(){
-  usuario=document.getElementById("usuarioInput").value;
+function entrar(){
+  usuario=document.getElementById("usuarioInput").value.trim();
   if(!usuario) return;
-  await carregar();
+  carregar();
   render();
   document.getElementById("login").style.display="none";
-}
-
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('service-worker.js');
 }
 </script>
 
