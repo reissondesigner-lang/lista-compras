@@ -140,11 +140,38 @@ button{
 <button id="add">➕ Adicionar Item</button>
 <button id="limpar">🧹 Limpar Comprados</button>
 
-<script>
+<!-- ================= FIREBASE + APP ================= -->
+<script type="module">
+/* ===== FIREBASE IMPORTS ===== */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc }
+  from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* ===== CONFIG FIREBASE (SUBSTITUA) ===== */
+const firebaseConfig = {
+  apiKey: "SUA_API_KEY",
+  authDomain: "SEU_PROJETO.firebaseapp.com",
+  projectId: "SEU_PROJECT_ID",
+  storageBucket: "SEU_PROJETO.appspot.com",
+  messagingSenderId: "ID",
+  appId: "APP_ID"
+};
+
+/* ===== INIT ===== */
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+/* ===== VARIÁVEIS ===== */
+let uid = null;
 let usuario = "";
 let itens = [];
 let limite = 0;
+let saveTimeout = null;
 
+/* ===== ELEMENTOS ===== */
 const tbody = document.getElementById("tbody");
 const limiteInput = document.getElementById("limite");
 const tabela = document.getElementById("tabela");
@@ -153,31 +180,46 @@ const totalListaEl = document.getElementById("totalLista");
 const totalCompradoEl = document.getElementById("totalComprado");
 const faltaEl = document.getElementById("falta");
 
+/* ===== LOGIN ANÔNIMO ===== */
+signInAnonymously(auth);
+
+onAuthStateChanged(auth, user => {
+  if(user){
+    uid = user.uid;
+  }
+});
+
+/* ===== HELPERS ===== */
 function formatar(v){
   return v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 }
 
-/* ===== SALVAMENTO ===== */
-function salvar(){
-  localStorage.setItem(
-    "lista_"+usuario,
-    JSON.stringify({ itens, limite })
-  );
-}
-
+/* ===== DEBOUNCE SAVE ===== */
 function autoSalvar(){
-  salvar();
+  if(saveTimeout) clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(salvar, 800);
 }
 
-/* ===== CARREGAMENTO ===== */
-function carregar(){
-  const dados = JSON.parse(
-    localStorage.getItem("lista_"+usuario)
-  ) || {};
+/* ===== FIRESTORE ===== */
+async function salvar(){
+  if(!uid || !usuario) return;
+  await setDoc(doc(db,"usuarios",usuario),{
+    itens,
+    limite
+  });
+}
 
-  itens = dados.itens || [];
-  limite = dados.limite || 0;
-  limiteInput.value = limite;
+async function carregar(){
+  if(!usuario) return;
+  const ref = doc(db,"usuarios",usuario);
+  const snap = await getDoc(ref);
+
+  if(snap.exists()){
+    const dados = snap.data();
+    itens = dados.itens || [];
+    limite = dados.limite || 0;
+    limiteInput.value = limite;
+  }
 }
 
 /* ===== CÁLCULOS ===== */
@@ -215,32 +257,22 @@ function render(){
 
     inp[0].onchange = e => {
       itens[index].comprou = e.target.checked;
-      autoSalvar();
-      render();
+      autoSalvar(); render();
     };
 
-    inp[1].oninput = e => {
-      itens[index].produto = e.target.value;
-      autoSalvar();
-    };
-
-    inp[2].oninput = e => {
-      itens[index].desc = e.target.value;
-      autoSalvar();
-    };
+    inp[1].oninput = e => { itens[index].produto = e.target.value; autoSalvar(); };
+    inp[2].oninput = e => { itens[index].desc = e.target.value; autoSalvar(); };
 
     inp[3].oninput = e => {
-      itens[index].qtde = parseFloat(e.target.value) || 0;
-      totalTd.textContent = formatar(itens[index].qtde * itens[index].valor);
-      calcular();
-      autoSalvar();
+      itens[index].qtde = parseFloat(e.target.value)||0;
+      totalTd.textContent=formatar(itens[index].qtde*itens[index].valor);
+      calcular(); autoSalvar();
     };
 
     inp[4].oninput = e => {
-      itens[index].valor = parseFloat(e.target.value) || 0;
-      totalTd.textContent = formatar(itens[index].qtde * itens[index].valor);
-      calcular();
-      autoSalvar();
+      itens[index].valor = parseFloat(e.target.value)||0;
+      totalTd.textContent=formatar(itens[index].qtde*itens[index].valor);
+      calcular(); autoSalvar();
     };
 
     tbody.appendChild(tr);
@@ -252,8 +284,7 @@ function render(){
 /* ===== AÇÕES ===== */
 document.getElementById("add").onclick = () => {
   itens.push({comprou:false,produto:"",desc:"",qtde:1,valor:0});
-  autoSalvar();
-  render();
+  autoSalvar(); render();
 };
 
 document.getElementById("limpar").onclick = () => {
@@ -265,23 +296,20 @@ document.getElementById("limpar").onclick = () => {
 };
 
 limiteInput.oninput = e => {
-  limite = parseFloat(e.target.value) || 0;
-  autoSalvar();
-  calcular();
+  limite = parseFloat(e.target.value)||0;
+  autoSalvar(); calcular();
 };
 
 /* ===== LOGIN ===== */
-function entrar(){
+window.entrar = async function(){
   usuario = document.getElementById("usuarioInput").value.trim();
   if(!usuario) return;
-  carregar();
+  await carregar();
   render();
   document.getElementById("login").style.display="none";
-}
+};
 
-/* ===== AUTOSAVE FINAL ===== */
-window.addEventListener("beforeunload", autoSalvar);
-setInterval(autoSalvar, 5000);
+window.addEventListener("beforeunload", salvar);
 </script>
 
 </body>
