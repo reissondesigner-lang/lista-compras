@@ -171,7 +171,8 @@ function formatar(v){
 
 function autoSalvar(){
   clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(salvar, 600);
+  saveTimeout = setTimeout(() => {salvar();
+                                 }, 1000);
 }
 
 /* ===== FIRESTORE ===== */
@@ -181,12 +182,17 @@ async function salvar(){
 }
 
 async function carregar(){
-  const snap = await getDoc(doc(db,"usuarios",usuario));
+  const ref = doc(db,"usuarios",usuario);
+  const snap = await getDoc(ref, {source:"server"});
   if(snap.exists()){
     const d = snap.data();
     itens = d.itens || [];
     limite = d.limite || 0;
     limiteInput.value = limite;
+  } else {
+    itens = [];
+    limite = 0;
+    limiteInput.value = 0;
   }
 }
 
@@ -257,6 +263,7 @@ limiteInput.oninput=e=>{
 
 </body>
 </html>
+
 
 
 
