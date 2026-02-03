@@ -94,9 +94,8 @@ button{
 <body>
 
 <div id="login">
-  <h2>Digite seu usuário</h2>
-  <input id="usuarioInput" placeholder="ex: reisson"/>
-  <button onclick="entrar()">Entrar</button>
+  <h2>Entrando...</h2>
+  <p>Conectando sua lista</p>
 </div>
 
 <h1>🛒 Lista de Compras</h1>
@@ -140,16 +139,15 @@ button{
 <button id="add">➕ Adicionar Item</button>
 <button id="limpar">🧹 Limpar Comprados</button>
 
-<!-- ================= FIREBASE + APP ================= -->
 <script type="module">
-/* ===== FIREBASE IMPORTS ===== */
+/* ===== FIREBASE ===== */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc }
   from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* ===== CONFIG FIREBASE (SUBSTITUA) ===== */
+/* ===== CONFIG (SUBSTITUA) ===== */
 const firebaseConfig = {
   apiKey: "SUA_API_KEY",
   authDomain: "SEU_PROJETO.firebaseapp.com",
@@ -164,9 +162,8 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* ===== VARIÁVEIS ===== */
+/* ===== ESTADO ===== */
 let uid = null;
-let usuario = "";
 let itens = [];
 let limite = 0;
 let saveTimeout = null;
@@ -180,12 +177,15 @@ const totalListaEl = document.getElementById("totalLista");
 const totalCompradoEl = document.getElementById("totalComprado");
 const faltaEl = document.getElementById("falta");
 
-/* ===== LOGIN ANÔNIMO ===== */
+/* ===== LOGIN ===== */
 signInAnonymously(auth);
 
-onAuthStateChanged(auth, user => {
+onAuthStateChanged(auth, async user => {
   if(user){
     uid = user.uid;
+    await carregar();
+    render();
+    document.getElementById("login").style.display="none";
   }
 });
 
@@ -194,7 +194,6 @@ function formatar(v){
   return v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 }
 
-/* ===== DEBOUNCE SAVE ===== */
 function autoSalvar(){
   if(saveTimeout) clearTimeout(saveTimeout);
   saveTimeout = setTimeout(salvar, 800);
@@ -202,16 +201,15 @@ function autoSalvar(){
 
 /* ===== FIRESTORE ===== */
 async function salvar(){
-  if(!uid || !usuario) return;
-  await setDoc(doc(db,"usuarios",usuario),{
+  if(!uid) return;
+  await setDoc(doc(db,"usuarios",uid),{
     itens,
     limite
   });
 }
 
 async function carregar(){
-  if(!usuario) return;
-  const ref = doc(db,"usuarios",usuario);
+  const ref = doc(db,"usuarios",uid);
   const snap = await getDoc(ref);
 
   if(snap.exists()){
@@ -298,15 +296,6 @@ document.getElementById("limpar").onclick = () => {
 limiteInput.oninput = e => {
   limite = parseFloat(e.target.value)||0;
   autoSalvar(); calcular();
-};
-
-/* ===== LOGIN ===== */
-window.entrar = async function(){
-  usuario = document.getElementById("usuarioInput").value.trim();
-  if(!usuario) return;
-  await carregar();
-  render();
-  document.getElementById("login").style.display="none";
 };
 
 window.addEventListener("beforeunload", salvar);
