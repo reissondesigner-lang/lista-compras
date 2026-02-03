@@ -81,7 +81,6 @@ button{
   color:#062b17;
   z-index:20;
 }
-
 #salvarManual.salvo{
   background:#1f7a4c;
   color:white;
@@ -158,7 +157,7 @@ button{
 <!-- ===== APP ===== -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, doc, setDoc, onSnapshot }
+import { getFirestore, doc, setDoc, getDoc, onSnapshot }
   from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 /* ===== FIREBASE CONFIG ===== */
@@ -204,19 +203,21 @@ async function salvar(){
   await setDoc(doc(db,"usuarios",usuario),{ itens, limite });
 }
 
-async function salvarManual(){
-  await salvar();
-  btnSalvar.classList.add("salvo");
-  btnSalvar.textContent="✔ Salvo";
-  setTimeout(()=>{
-    btnSalvar.classList.remove("salvo");
-    btnSalvar.textContent="💾 Salvar";
-  },1500);
+async function carregarServidor(){
+  const ref = doc(db,"usuarios",usuario);
+  const snap = await getDoc(ref,{source:"server"});
+  if(snap.exists()){
+    const d = snap.data();
+    itens = d.itens || [];
+    limite = d.limite || 0;
+    limiteInput.value = limite;
+    render();
+  }
 }
 
 function ouvirMudancas(){
   const ref = doc(db,"usuarios",usuario);
-  onSnapshot(ref, snap=>{
+  onSnapshot(ref,snap=>{
     if(snap.exists()){
       const d = snap.data();
       itens = d.itens || [];
@@ -225,6 +226,16 @@ function ouvirMudancas(){
       render();
     }
   });
+}
+
+async function salvarManual(){
+  await salvar();
+  btnSalvar.classList.add("salvo");
+  btnSalvar.textContent="✔ Salvo";
+  setTimeout(()=>{
+    btnSalvar.classList.remove("salvo");
+    btnSalvar.textContent="💾 Salvar";
+  },1500);
 }
 
 /* ===== CÁLCULO ===== */
@@ -243,7 +254,7 @@ function calcular(){
 /* ===== RENDER ===== */
 function render(){
   tbody.innerHTML="";
-  itens.forEach((item,i)=>{
+  itens.forEach(item=>{
     const tr=document.createElement("tr");
     if(item.comprou) tr.classList.add("comprado");
 
@@ -269,10 +280,13 @@ function render(){
 }
 
 /* ===== LOGIN ===== */
-document.getElementById("entrarBtn").onclick=()=>{
-  usuario = document.getElementById("usuarioInput").value.trim().toLowerCase();
+document.getElementById("entrarBtn").onclick=async()=>{
+  usuario = document.getElementById("usuarioInput")
+    .value.trim().toLowerCase();
   if(!usuario) return alert("Digite um nome");
-  ouvirMudancas();
+
+  await carregarServidor(); // SEM CACHE
+  ouvirMudancas();          // TEMPO REAL
   document.getElementById("login").style.display="none";
 };
 
