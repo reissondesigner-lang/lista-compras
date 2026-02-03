@@ -231,7 +231,7 @@ function render(){
 
 /* ===== LOGIN ===== */
 document.getElementById("entrarBtn").addEventListener("click", async ()=>{
-  usuario = document.getElementById("usuarioInput").value.trim();
+  usuario = document.getElementById("usuarioInput").value.trim().toLowerCase();
   if(!usuario) return alert("Digite um nome");
   await carregar();
   render();
@@ -257,6 +257,7 @@ limiteInput.oninput=e=>{
 
 </body>
 </html>
+
 
 
 
