@@ -1,6 +1,6 @@
 {
   "name": "Lista de Compras",
-  "short_name": "Compras",
+  "short_name": "listCompra",
   "start_url": "/lista-compras/index.html",
   "scope": "/lista-compras/",
   "display": "standalone",
@@ -20,3 +20,4 @@
     }
   ]
 }
+
