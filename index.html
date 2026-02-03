@@ -125,38 +125,19 @@ button{
 <h1>🛒 Lista de Compras</h1>
 
 <div class="painel">
-  <div class="card">
-    <div>TOTAL</div>
-    <strong id="totalLista">R$ 0,00</strong>
-  </div>
-  <div class="card">
-    <div>LIMITE</div>
-    <input type="number" id="limite" placeholder="0"/>
-  </div>
-  <div class="card">
-    <div>COMPRADO</div>
-    <strong id="totalComprado">R$ 0,00</strong>
-  </div>
-  <div class="card">
-    <div>FALTA</div>
-    <strong id="falta">R$ 0,00</strong>
-  </div>
+  <div class="card"><div>TOTAL</div><strong id="totalLista">R$ 0,00</strong></div>
+  <div class="card"><div>LIMITE</div><input type="number" id="limite" placeholder="0"/></div>
+  <div class="card"><div>COMPRADO</div><strong id="totalComprado">R$ 0,00</strong></div>
+  <div class="card"><div>FALTA</div><strong id="falta">R$ 0,00</strong></div>
 </div>
 
 <table>
-  <thead>
-    <tr>
-      <th>✔</th>
-      <th>Produto</th>
-      <th>Desc</th>
-      <th>Qtde</th>
-      <th>Valor</th>
-      <th>Total</th>
-      <th>📄</th>
-      <th>🗑</th>
-    </tr>
-  </thead>
-  <tbody id="tbody"></tbody>
+<thead>
+<tr>
+<th>✔</th><th>Produto</th><th>Desc</th><th>Qtde</th><th>Valor</th><th>Total</th><th>📄</th><th>🗑</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
 </table>
 
 <button id="add">➕ Adicionar Item</button>
@@ -165,7 +146,7 @@ button{
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, doc, setDoc, onSnapshot }
-  from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBPVGnlFkcj1-DwSJAerYSltoo8YfWnHG8",
@@ -176,7 +157,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let usuario="", itens=[], limite=0, ignorarSnapshot=false;
+let usuario="", itens=[], limite=0, ignorarSnapshot=false, focarNovo=false;
 
 const tbody=document.getElementById("tbody");
 const limiteInput=document.getElementById("limite");
@@ -198,7 +179,7 @@ function calcular(){
   totalLista.textContent=formatar(total);
   totalComprado.textContent=formatar(comprado);
   falta.textContent=formatar(limite-comprado);
-  falta.style.color = (limite && comprado>limite) ? "#ff6b6b" : "#e8fff3";
+  falta.style.color=(limite && comprado>limite)?"#ff6b6b":"#e8fff3";
 }
 
 async function salvar(){
@@ -227,14 +208,14 @@ function criarLinha(item,i){
   if(item.comprou) tr.classList.add("comprado");
 
   tr.innerHTML=`
-    <td><input type="checkbox" ${item.comprou?"checked":""}></td>
-    <td><input value="${item.produto||""}"></td>
-    <td><input value="${item.desc||""}"></td>
-    <td><input type="number" value="${item.qtde||1}"></td>
-    <td><input type="number" step="0.01" value="${item.valor||0}"></td>
-    <td class="total">${formatar(item.qtde*item.valor)}</td>
-    <td><button class="dup">📄</button></td>
-    <td><button class="del">❌</button></td>
+  <td><input type="checkbox" ${item.comprou?"checked":""}></td>
+  <td><input value="${item.produto||""}"></td>
+  <td><input value="${item.desc||""}"></td>
+  <td><input type="number" value="${item.qtde||1}"></td>
+  <td><input type="number" step="0.01" value="${item.valor||0}"></td>
+  <td class="total">${formatar(item.qtde*item.valor)}</td>
+  <td><button class="dup">📄</button></td>
+  <td><button class="del">❌</button></td>
   `;
 
   const inputs=tr.querySelectorAll("input");
@@ -276,17 +257,30 @@ function criarLinha(item,i){
 
   dup.onclick=()=>{
     itens.splice(i+1,0,{...item,comprou:false});
+    focarNovo=true;
     salvar(); render();
   };
 
-  // drag
-  tr.ondragstart=()=>tr.classList.add("dragging");
-  tr.ondragend=()=>{
-    tr.classList.remove("dragging");
-    const rows=[...tbody.querySelectorAll("tr")];
-    itens=rows.map((r,idx)=>itens[rows.indexOf(r)]);
-    salvar();
+  tr.ondragstart=()=>tr.dataset.index=i;
+  tr.ondragover=e=>e.preventDefault();
+  tr.ondrop=e=>{
+    e.preventDefault();
+    const from=+e.dataTransfer.getData("text")||i;
   };
+
+  tr.addEventListener("dragstart",e=>{
+    e.dataTransfer.setData("text/plain",i);
+  });
+
+  tr.addEventListener("drop",e=>{
+    e.preventDefault();
+    const from=+e.dataTransfer.getData("text/plain");
+    const to=i;
+    const movido=itens.splice(from,1)[0];
+    itens.splice(to,0,movido);
+    salvar();
+    render();
+  });
 
   return tr;
 }
@@ -302,10 +296,13 @@ function render(){
   itens.forEach((it,i)=>tbody.appendChild(criarLinha(it,i)));
   calcular();
 
-  setTimeout(()=>{
-    const ultimo=tbody.querySelector("tr:last-child input:nth-child(2)");
-    if(ultimo) ultimo.focus();
-  },50);
+  if(focarNovo){
+    setTimeout(()=>{
+      const ultimo=tbody.querySelector("tr:last-child td:nth-child(2) input");
+      if(ultimo) ultimo.focus();
+      focarNovo=false;
+    },50);
+  }
 }
 
 document.getElementById("entrarBtn").onclick=()=>{
@@ -317,6 +314,7 @@ document.getElementById("entrarBtn").onclick=()=>{
 
 document.getElementById("add").onclick=()=>{
   itens.push({comprou:false,produto:"",desc:"",qtde:1,valor:0});
+  focarNovo=true;
   salvar(); render();
 };
 
