@@ -157,6 +157,7 @@ function formatar(v){
   return v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 }
 
+/* ===== SALVAMENTO ===== */
 function salvar(){
   localStorage.setItem(
     "lista_"+usuario,
@@ -164,6 +165,11 @@ function salvar(){
   );
 }
 
+function autoSalvar(){
+  salvar();
+}
+
+/* ===== CARREGAMENTO ===== */
 function carregar(){
   const dados = JSON.parse(
     localStorage.getItem("lista_"+usuario)
@@ -174,6 +180,7 @@ function carregar(){
   limiteInput.value = limite;
 }
 
+/* ===== CÁLCULOS ===== */
 function calcular(){
   let totalLista=0,totalComprado=0;
   itens.forEach(i=>{
@@ -186,8 +193,10 @@ function calcular(){
   faltaEl.textContent=formatar(limite-totalComprado);
 }
 
+/* ===== RENDER ===== */
 function render(){
   tbody.innerHTML="";
+
   itens.forEach((item,index)=>{
     const tr=document.createElement("tr");
     if(item.comprou) tr.classList.add("comprado");
@@ -201,59 +210,78 @@ function render(){
       <td class="total">${formatar(item.qtde*item.valor)}</td>
     `;
 
-    const inp=tr.querySelectorAll("input");
-    const totalTd=tr.querySelector(".total");
+    const inp = tr.querySelectorAll("input");
+    const totalTd = tr.querySelector(".total");
 
-    inp[0].onchange=e=>{
-      itens[index].comprou=e.target.checked;
-      salvar(); render();
+    inp[0].onchange = e => {
+      itens[index].comprou = e.target.checked;
+      autoSalvar();
+      render();
     };
 
-    inp[1].oninput=e=>{ itens[index].produto=e.target.value; salvar(); };
-    inp[2].oninput=e=>{ itens[index].desc=e.target.value; salvar(); };
-
-    inp[3].oninput=e=>{
-      itens[index].qtde=parseFloat(e.target.value)||0;
-      totalTd.textContent=formatar(itens[index].qtde*itens[index].valor);
-      calcular(); salvar();
+    inp[1].oninput = e => {
+      itens[index].produto = e.target.value;
+      autoSalvar();
     };
 
-    inp[4].oninput=e=>{
-      itens[index].valor=parseFloat(e.target.value)||0;
-      totalTd.textContent=formatar(itens[index].qtde*itens[index].valor);
-      calcular(); salvar();
+    inp[2].oninput = e => {
+      itens[index].desc = e.target.value;
+      autoSalvar();
+    };
+
+    inp[3].oninput = e => {
+      itens[index].qtde = parseFloat(e.target.value) || 0;
+      totalTd.textContent = formatar(itens[index].qtde * itens[index].valor);
+      calcular();
+      autoSalvar();
+    };
+
+    inp[4].oninput = e => {
+      itens[index].valor = parseFloat(e.target.value) || 0;
+      totalTd.textContent = formatar(itens[index].qtde * itens[index].valor);
+      calcular();
+      autoSalvar();
     };
 
     tbody.appendChild(tr);
   });
+
   calcular();
 }
 
-document.getElementById("add").onclick=()=>{
+/* ===== AÇÕES ===== */
+document.getElementById("add").onclick = () => {
   itens.push({comprou:false,produto:"",desc:"",qtde:1,valor:0});
-  salvar(); render();
+  autoSalvar();
+  render();
 };
 
-document.getElementById("limpar").onclick=()=>{
+document.getElementById("limpar").onclick = () => {
   itens.forEach(i=>i.comprou=false);
-  salvar();
+  autoSalvar();
   tabela.classList.add("flash");
   setTimeout(()=>tabela.classList.remove("flash"),600);
   render();
 };
 
-limiteInput.oninput=e=>{
-  limite=parseFloat(e.target.value)||0;
-  salvar(); calcular();
+limiteInput.oninput = e => {
+  limite = parseFloat(e.target.value) || 0;
+  autoSalvar();
+  calcular();
 };
 
+/* ===== LOGIN ===== */
 function entrar(){
-  usuario=document.getElementById("usuarioInput").value.trim();
+  usuario = document.getElementById("usuarioInput").value.trim();
   if(!usuario) return;
   carregar();
   render();
   document.getElementById("login").style.display="none";
 }
+
+/* ===== AUTOSAVE FINAL ===== */
+window.addEventListener("beforeunload", autoSalvar);
+setInterval(autoSalvar, 5000);
 </script>
 
 </body>
