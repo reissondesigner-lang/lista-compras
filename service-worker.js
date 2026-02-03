@@ -3,7 +3,10 @@ const CACHE_NAME = "lista-compras-v1";
 const FILES_TO_CACHE = [
   "./",
   "./index.html",
-  "./manifest.json"
+  "./manifest.json",
+  "./service-worker.js",
+  "./icon-192.png",
+  "./icon-512.png",
 ];
 
 self.addEventListener("install", event => {
@@ -27,3 +30,4 @@ self.addEventListener("fetch", event => {
     fetch(event.request).catch(() => caches.match(event.request))
   );
 });
+
