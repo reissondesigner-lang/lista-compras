@@ -33,6 +33,21 @@ h1{text-align:center;margin-top:40px;}
   z-index:20;
 }
 
+.painel{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-bottom:15px;
+}
+
+.card{
+  background:rgba(255,255,255,0.06);
+  border-radius:10px;
+  padding:10px;
+  text-align:center;
+  border:1px solid rgba(255,255,255,0.15);
+}
+
 table{
   width:100%;
   border-collapse:collapse;
@@ -43,6 +58,11 @@ th,td{
   border:1px solid rgba(255,255,255,0.12);
   padding:6px;
   text-align:center;
+}
+
+tr.comprado{
+  opacity:.5;
+  text-decoration:line-through;
 }
 
 input{
@@ -61,13 +81,51 @@ input{
   cursor:pointer;
   padding:4px 8px;
 }
+
+#login{
+  position:fixed;
+  inset:0;
+  background:#0b1f14;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+  gap:10px;
+  z-index:30;
+}
 </style>
 </head>
 
 <body>
 
 <button id="saveBtn">💾 Salvar</button>
+
+<div id="login">
+  <h2>Digite seu id👤</h2>
+  <input id="usuarioInput" placeholder="ex: reisson"/>
+  <button id="entrarBtn">Entrar</button>
+</div>
+
 <h1>🛒 Lista de Compras</h1>
+
+<div class="painel">
+  <div class="card">
+    <div>TOTAL</div>
+    <strong id="totalLista">R$ 0,00</strong>
+  </div>
+  <div class="card">
+    <div>LIMITE</div>
+    <input type="number" id="limite" placeholder="0"/>
+  </div>
+  <div class="card">
+    <div>COMPRADO</div>
+    <strong id="totalComprado">R$ 0,00</strong>
+  </div>
+  <div class="card">
+    <div>FALTA</div>
+    <strong id="falta">R$ 0,00</strong>
+  </div>
+</div>
 
 <table>
   <thead>
@@ -85,6 +143,7 @@ input{
 </table>
 
 <button id="add">➕ Adicionar Item</button>
+<button id="limpar">🧹 Limpar Comprados</button>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -92,88 +151,91 @@ import { getFirestore, doc, setDoc, getDoc, onSnapshot }
   from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "SUA_KEY",
-  authDomain: "SEU_DOMINIO",
-  projectId: "SEU_PROJETO"
+  apiKey: "AIzaSyBPVGnlFkcj1-DwSJAerYSltoo8YfWnHG8",
+  authDomain: "lista-comprars.firebaseapp.com",
+  projectId: "lista-comprars",
+  storageBucket: "lista-comprars.appspot.com",
+  messagingSenderId: "669560187933",
+  appId: "1:669560187933:web:bf6b4d7426a89b420f6af4"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+let usuario = "";
 let itens = [];
+let limite = 0;
 let ignorarSnapshot = false;
 
 const tbody = document.getElementById("tbody");
+const limiteInput = document.getElementById("limite");
 
 function formatar(v){
   return v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 }
 
+function calcular(){
+  let total=0, comprado=0;
+  itens.forEach(i=>{
+    const t=i.qtde*i.valor;
+    total+=t;
+    if(i.comprou) comprado+=t;
+  });
+  totalLista.textContent=formatar(total);
+  totalComprado.textContent=formatar(comprado);
+  falta.textContent=formatar(limite-comprado);
+}
+
 async function salvar(){
+  if(!usuario) return;
   ignorarSnapshot = true;
-  await setDoc(doc(db,"lista","principal"),{ itens });
-  setTimeout(()=> ignorarSnapshot=false,500);
+  await setDoc(doc(db,"usuarios",usuario),{ itens, limite });
+  setTimeout(()=>ignorarSnapshot=false,500);
 }
 
 function ouvir(){
-  onSnapshot(doc(db,"lista","principal"),snap=>{
+  onSnapshot(doc(db,"usuarios",usuario),snap=>{
     if(ignorarSnapshot) return;
     if(snap.exists()){
-      itens = snap.data().itens || [];
+      const d=snap.data();
+      itens=d.itens||[];
+      limite=d.limite||0;
+      limiteInput.value=limite;
       render();
     }
   });
 }
 
-function calcularLinha(item,tr){
-  const totalCell = tr.querySelector(".total");
-  totalCell.textContent = formatar((item.qtde||0)*(item.valor||0));
-}
-
 function criarLinha(item,i){
-  const tr = document.createElement("tr");
+  const tr=document.createElement("tr");
+  if(item.comprou) tr.classList.add("comprado");
 
-  tr.innerHTML = `
+  tr.innerHTML=`
     <td><input type="checkbox" ${item.comprou?"checked":""}></td>
     <td><input value="${item.produto||""}"></td>
     <td><input value="${item.desc||""}"></td>
     <td><input type="number" value="${item.qtde||0}"></td>
     <td><input type="number" step="0.01" value="${item.valor||0}"></td>
-    <td class="total">${formatar((item.qtde||0)*(item.valor||0))}</td>
+    <td class="total">${formatar(item.qtde*item.valor)}</td>
     <td><button class="del">❌</button></td>
   `;
 
-  const inputs = tr.querySelectorAll("input");
-  const btnDel = tr.querySelector(".del");
+  const inputs=tr.querySelectorAll("input");
+  const totalCell=tr.querySelector(".total");
+  const del=tr.querySelector(".del");
 
-  inputs[0].onchange = e=>{
-    item.comprou = e.target.checked;
-    salvar();
-  };
+  function atualizar(){
+    totalCell.textContent=formatar(item.qtde*item.valor);
+    calcular();
+  }
 
-  inputs[1].oninput = e=>{
-    item.produto = e.target.value;
-    salvar();
-  };
+  inputs[0].onchange=e=>{ item.comprou=e.target.checked; salvar(); };
+  inputs[1].oninput=e=>{ item.produto=e.target.value; salvar(); };
+  inputs[2].oninput=e=>{ item.desc=e.target.value; salvar(); };
+  inputs[3].oninput=e=>{ item.qtde=+e.target.value||0; atualizar(); salvar(); };
+  inputs[4].oninput=e=>{ item.valor=+e.target.value||0; atualizar(); salvar(); };
 
-  inputs[2].oninput = e=>{
-    item.desc = e.target.value;
-    salvar();
-  };
-
-  inputs[3].oninput = e=>{
-    item.qtde = +e.target.value || 0;
-    calcularLinha(item,tr);
-    salvar();
-  };
-
-  inputs[4].oninput = e=>{
-    item.valor = +e.target.value || 0;
-    calcularLinha(item,tr);
-    salvar();
-  };
-
-  btnDel.onclick = ()=>{
+  del.onclick=()=>{
     if(confirm("Apagar este item?")){
       itens.splice(i,1);
       salvar();
@@ -185,21 +247,37 @@ function criarLinha(item,i){
 }
 
 function render(){
-  tbody.innerHTML = "";
-  itens.forEach((item,i)=>{
-    tbody.appendChild(criarLinha(item,i));
-  });
+  tbody.innerHTML="";
+  itens.forEach((it,i)=>tbody.appendChild(criarLinha(it,i)));
+  calcular();
 }
 
-document.getElementById("add").onclick = ()=>{
+document.getElementById("entrarBtn").onclick=async()=>{
+  usuario=usuarioInput.value.trim().toLowerCase();
+  if(!usuario) return alert("Digite um nome");
+  document.getElementById("login").style.display="none";
+  ouvir();
+};
+
+document.getElementById("add").onclick=()=>{
   itens.push({comprou:false,produto:"",desc:"",qtde:1,valor:0});
   salvar();
   render();
 };
 
-document.getElementById("saveBtn").onclick = salvar;
+document.getElementById("limpar").onclick=()=>{
+  itens.forEach(i=>i.comprou=false);
+  salvar();
+  render();
+};
 
-ouvir();
+limiteInput.oninput=e=>{
+  limite=+e.target.value||0;
+  calcular();
+  salvar();
+};
+
+document.getElementById("saveBtn").onclick=salvar;
 </script>
 
 </body>
