@@ -116,7 +116,7 @@ button{
   </div>
 </div>
 
-<table id="tabela">
+<table>
   <thead>
     <tr>
       <th>✔</th>
@@ -133,19 +133,19 @@ button{
 <button id="add">➕ Adicionar Item</button>
 <button id="limpar">🧹 Limpar Comprados</button>
 
+<!-- ===== APP ===== -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc }
   from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* ===== CONFIG FIREBASE ===== */
+/* 🔥 CONFIG FIREBASE (PREENCHA TUDO) */
 const firebaseConfig = {
   apiKey: "SUA_API_KEY",
   authDomain: "SEU_PROJETO.firebaseapp.com",
-  projectId: "SEU_PROJECT_ID",
+  projectId: "SEU_PROJECT_ID"
 };
 
-/* ===== INIT ===== */
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
@@ -158,8 +158,6 @@ let saveTimeout = null;
 /* ===== ELEMENTOS ===== */
 const tbody = document.getElementById("tbody");
 const limiteInput = document.getElementById("limite");
-const tabela = document.getElementById("tabela");
-
 const totalListaEl = document.getElementById("totalLista");
 const totalCompradoEl = document.getElementById("totalComprado");
 const faltaEl = document.getElementById("falta");
@@ -170,100 +168,89 @@ function formatar(v){
 }
 
 function autoSalvar(){
-  if(saveTimeout) clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(salvar, 800);
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(salvar, 600);
 }
 
 /* ===== FIRESTORE ===== */
 async function salvar(){
   if(!usuario) return;
-  await setDoc(doc(db,"usuarios",usuario),{
-    itens,
-    limite
-  });
+  await setDoc(doc(db,"usuarios",usuario),{ itens, limite });
 }
 
 async function carregar(){
-  const ref = doc(db,"usuarios",usuario);
-  const snap = await getDoc(ref);
-
+  const snap = await getDoc(doc(db,"usuarios",usuario));
   if(snap.exists()){
-    const dados = snap.data();
-    itens = dados.itens || [];
-    limite = dados.limite || 0;
+    const d = snap.data();
+    itens = d.itens || [];
+    limite = d.limite || 0;
     limiteInput.value = limite;
   }
 }
 
-/* ===== CÁLCULOS ===== */
+/* ===== CÁLCULO ===== */
 function calcular(){
-  let totalLista=0,totalComprado=0;
+  let total=0, comprado=0;
   itens.forEach(i=>{
     const t=i.qtde*i.valor;
-    totalLista+=t;
-    if(i.comprou) totalComprado+=t;
+    total+=t;
+    if(i.comprou) comprado+=t;
   });
-  totalListaEl.textContent=formatar(totalLista);
-  totalCompradoEl.textContent=formatar(totalComprado);
-  faltaEl.textContent=formatar(limite-totalComprado);
+  totalListaEl.textContent=formatar(total);
+  totalCompradoEl.textContent=formatar(comprado);
+  faltaEl.textContent=formatar(limite-comprado);
 }
 
 /* ===== RENDER ===== */
 function render(){
   tbody.innerHTML="";
-
-  itens.forEach((item,index)=>{
+  itens.forEach((item,i)=>{
     const tr=document.createElement("tr");
-    if(item.comprou) tr.classList.add("comprado");
-
     tr.innerHTML=`
       <td><input type="checkbox" ${item.comprou?"checked":""}></td>
       <td><input value="${item.produto}"></td>
       <td><input value="${item.desc}"></td>
       <td><input type="number" value="${item.qtde}"></td>
       <td><input type="number" step="0.01" value="${item.valor}"></td>
-      <td class="total">${formatar(item.qtde*item.valor)}</td>
+      <td>${formatar(item.qtde*item.valor)}</td>
     `;
 
-    const inp = tr.querySelectorAll("input");
-    const totalTd = tr.querySelector(".total");
-
-    inp[0].onchange = e => {
-      itens[index].comprou = e.target.checked;
-      autoSalvar(); render();
-    };
-
-    inp[1].oninput = e => { itens[index].produto = e.target.value; autoSalvar(); };
-    inp[2].oninput = e => { itens[index].desc = e.target.value; autoSalvar(); };
-
-    inp[3].oninput = e => {
-      itens[index].qtde = parseFloat(e.target.value)||0;
-      totalTd.textContent=formatar(itens[index].qtde*itens[index].valor);
-      calcular(); autoSalvar();
-    };
-
-    inp[4].oninput = e => {
-      itens[index].valor = parseFloat(e.target.value)||0;
-      totalTd.textContent=formatar(itens[index].qtde*itens[index].valor);
-      calcular(); autoSalvar();
-    };
+    const inp=tr.querySelectorAll("input");
+    inp[0].onchange=e=>{ item.comprou=e.target.checked; autoSalvar(); render(); };
+    inp[1].oninput=e=>{ item.produto=e.target.value; autoSalvar(); };
+    inp[2].oninput=e=>{ item.desc=e.target.value; autoSalvar(); };
+    inp[3].oninput=e=>{ item.qtde=+e.target.value||0; autoSalvar(); render(); };
+    inp[4].oninput=e=>{ item.valor=+e.target.value||0; autoSalvar(); render(); };
 
     tbody.appendChild(tr);
   });
-
   calcular();
 }
 
 /* ===== LOGIN ===== */
-document.getElementById("entrarBtn").onclick = async () => {
+document.getElementById("entrarBtn").addEventListener("click", async ()=>{
   usuario = document.getElementById("usuarioInput").value.trim();
-  if(!usuario) return;
+  if(!usuario) return alert("Digite um nome");
   await carregar();
   render();
   document.getElementById("login").style.display="none";
+});
+
+/* ===== BOTÕES ===== */
+document.getElementById("add").onclick=()=>{
+  itens.push({comprou:false,produto:"",desc:"",qtde:1,valor:0});
+  autoSalvar(); render();
 };
 
-window.addEventListener("beforeunload", salvar);
+document.getElementById("limpar").onclick=()=>{
+  itens.forEach(i=>i.comprou=false);
+  autoSalvar(); render();
+};
+
+limiteInput.oninput=e=>{
+  limite=+e.target.value||0;
+  autoSalvar(); calcular();
+};
 </script>
 
 </body>
