@@ -70,6 +70,24 @@ button{
 #add{ background:#38d27a; color:#062b17; }
 #limpar{ background:#1f7a4c; color:white; }
 
+/* ===== BOTÃO SALVAR ===== */
+#salvarManual{
+  position:fixed;
+  top:10px;
+  right:10px;
+  width:auto;
+  padding:10px 14px;
+  background:#38d27a;
+  color:#062b17;
+  z-index:20;
+}
+
+#salvarManual.salvo{
+  background:#1f7a4c;
+  color:white;
+}
+
+/* ===== LOGIN ===== */
 #login{
   position:fixed;
   inset:0;
@@ -79,7 +97,7 @@ button{
   align-items:center;
   flex-direction:column;
   gap:10px;
-  z-index:10;
+  z-index:30;
 }
 </style>
 </head>
@@ -92,6 +110,9 @@ button{
   <input id="usuarioInput" placeholder="ex: reisson"/>
   <button id="entrarBtn">Entrar</button>
 </div>
+
+<!-- ===== BOTÃO SALVAR ===== -->
+<button id="salvarManual">💾 Salvar</button>
 
 <h1>🛒 Lista de Compras</h1>
 
@@ -165,6 +186,7 @@ const limiteInput = document.getElementById("limite");
 const totalListaEl = document.getElementById("totalLista");
 const totalCompradoEl = document.getElementById("totalComprado");
 const faltaEl = document.getElementById("falta");
+const btnSalvar = document.getElementById("salvarManual");
 
 /* ===== HELPERS ===== */
 function formatar(v){
@@ -180,6 +202,16 @@ function autoSalvar(){
 async function salvar(){
   if(!usuario) return;
   await setDoc(doc(db,"usuarios",usuario),{ itens, limite });
+}
+
+async function salvarManual(){
+  await salvar();
+  btnSalvar.classList.add("salvo");
+  btnSalvar.textContent="✔ Salvo";
+  setTimeout(()=>{
+    btnSalvar.classList.remove("salvo");
+    btnSalvar.textContent="💾 Salvar";
+  },1500);
 }
 
 function ouvirMudancas(){
@@ -225,7 +257,6 @@ function render(){
     `;
 
     const inp=tr.querySelectorAll("input");
-
     inp[0].onchange=e=>{ item.comprou=e.target.checked; autoSalvar(); };
     inp[1].oninput=e=>{ item.produto=e.target.value; autoSalvar(); };
     inp[2].oninput=e=>{ item.desc=e.target.value; autoSalvar(); };
@@ -239,14 +270,8 @@ function render(){
 
 /* ===== LOGIN ===== */
 document.getElementById("entrarBtn").onclick=()=>{
-  usuario = document
-    .getElementById("usuarioInput")
-    .value
-    .trim()
-    .toLowerCase();
-
+  usuario = document.getElementById("usuarioInput").value.trim().toLowerCase();
   if(!usuario) return alert("Digite um nome");
-
   ouvirMudancas();
   document.getElementById("login").style.display="none";
 };
@@ -266,6 +291,8 @@ limiteInput.oninput=e=>{
   limite=+e.target.value||0;
   autoSalvar();
 };
+
+btnSalvar.onclick=salvarManual;
 </script>
 
 </body>
