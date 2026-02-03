@@ -5,15 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Lista de Compras</title>
 
-<!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#38d27a">
-
-<!-- iOS PWA -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Lista de Compras">
-<link rel="apple-touch-icon" href="icon-192.png">
 
 <style>
 body{
@@ -34,25 +27,10 @@ h1{text-align:center;margin-top:40px;}
   color:#062b17;
   border:none;
   border-radius:8px;
-  padding:8px 8px;
+  padding:8px;
   font-weight:bold;
   cursor:pointer;
   z-index:20;
-}
-
-.painel{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-  margin-bottom:15px;
-}
-
-.card{
-  background:rgba(255,255,255,0.06);
-  border-radius:10px;
-  padding:10px;
-  text-align:center;
-  border:1px solid rgba(255,255,255,0.15);
 }
 
 table{
@@ -67,11 +45,6 @@ th,td{
   text-align:center;
 }
 
-tr.comprado{
-  opacity:.5;
-  text-decoration:line-through;
-}
-
 input{
   width:90%;
   background:transparent;
@@ -80,30 +53,13 @@ input{
   text-align:center;
 }
 
-button{
-  margin-top:10px;
-  width:100%;
-  padding:12px;
-  font-size:16px;
+.del{
+  background:#c0392b;
+  color:white;
   border:none;
-  border-radius:8px;
-  font-weight:bold;
+  border-radius:6px;
   cursor:pointer;
-}
-
-#add{ background:#38d27a; color:#062b17; }
-#limpar{ background:#1f7a4c; color:white; }
-
-#login{
-  position:fixed;
-  inset:0;
-  background:#0b1f14;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  flex-direction:column;
-  gap:10px;
-  z-index:30;
+  padding:4px 8px;
 }
 </style>
 </head>
@@ -111,33 +67,7 @@ button{
 <body>
 
 <button id="saveBtn">💾 Salvar</button>
-
-<div id="login">
-  <h2>Digite seu id👤</h2>
-  <input id="usuarioInput" placeholder="ex: reisson"/>
-  <button id="entrarBtn">Entrar</button>
-</div>
-
 <h1>🛒 Lista de Compras</h1>
-
-<div class="painel">
-  <div class="card">
-    <div>TOTAL</div>
-    <strong id="totalLista">R$ 0,00</strong>
-  </div>
-  <div class="card">
-    <div>LIMITE</div>
-    <input type="number" id="limite" placeholder="0"/>
-  </div>
-  <div class="card">
-    <div>COMPRADO</div>
-    <strong id="totalComprado">R$ 0,00</strong>
-  </div>
-  <div class="card">
-    <div>FALTA</div>
-    <strong id="falta">R$ 0,00</strong>
-  </div>
-</div>
 
 <table>
   <thead>
@@ -148,178 +78,129 @@ button{
       <th>Qtde</th>
       <th>Valor</th>
       <th>Total</th>
+      <th>🗑</th>
     </tr>
   </thead>
   <tbody id="tbody"></tbody>
 </table>
 
 <button id="add">➕ Adicionar Item</button>
-<button id="limpar">🧹 Limpar Comprados</button>
 
-<!-- ===== APP ===== -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc, onSnapshot }
   from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBPVGnlFkcj1-DwSJAerYSltoo8YfWnHG8",
-  authDomain: "lista-comprars.firebaseapp.com",
-  projectId: "lista-comprars",
-  storageBucket: "lista-comprars.appspot.com",
-  messagingSenderId: "669560187933",
-  appId: "1:669560187933:web:bf6b4d7426a89b420f6af4"
+  apiKey: "SUA_KEY",
+  authDomain: "SEU_DOMINIO",
+  projectId: "SEU_PROJETO"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* ===== ESTADO ===== */
-let usuario = "";
 let itens = [];
-let limite = 0;
-let saveTimeout = null;
+let ignorarSnapshot = false;
 
-/* ===== ELEMENTOS ===== */
 const tbody = document.getElementById("tbody");
-const limiteInput = document.getElementById("limite");
-const totalListaEl = document.getElementById("totalLista");
-const totalCompradoEl = document.getElementById("totalComprado");
-const faltaEl = document.getElementById("falta");
 
-/* ===== HELPERS ===== */
 function formatar(v){
   return v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 }
 
-function autoSalvar(){
-  clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(salvar, 800);
-}
-
-/* ===== FIRESTORE ===== */
 async function salvar(){
-  if(!usuario) return;
-  await setDoc(doc(db,"usuarios",usuario),{ itens, limite });
+  ignorarSnapshot = true;
+  await setDoc(doc(db,"lista","principal"),{ itens });
+  setTimeout(()=> ignorarSnapshot=false,500);
 }
 
-async function carregarServidor(){
-  const snap = await getDoc(doc(db,"usuarios",usuario),{source:"server"});
-  if(snap.exists()){
-    const d = snap.data();
-    itens = d.itens || [];
-    limite = d.limite || 0;
-    limiteInput.value = limite;
-    render();
-  }
-}
-
-function ouvirMudancas(){
-  onSnapshot(doc(db,"usuarios",usuario),snap=>{
+function ouvir(){
+  onSnapshot(doc(db,"lista","principal"),snap=>{
+    if(ignorarSnapshot) return;
     if(snap.exists()){
-      const d = snap.data();
-      itens = d.itens || [];
-      limite = d.limite || 0;
-      limiteInput.value = limite;
+      itens = snap.data().itens || [];
       render();
     }
   });
 }
 
-/* ===== CÁLCULO ===== */
-function calcular(){
-  let total=0, comprado=0;
-  itens.forEach(i=>{
-    const t=i.qtde*i.valor;
-    total+=t;
-    if(i.comprou) comprado+=t;
-  });
-  totalListaEl.textContent=formatar(total);
-  totalCompradoEl.textContent=formatar(comprado);
-  faltaEl.textContent=formatar(limite-comprado);
+function calcularLinha(item,tr){
+  const totalCell = tr.querySelector(".total");
+  totalCell.textContent = formatar((item.qtde||0)*(item.valor||0));
 }
 
-/* ===== RENDER ===== */
+function criarLinha(item,i){
+  const tr = document.createElement("tr");
+
+  tr.innerHTML = `
+    <td><input type="checkbox" ${item.comprou?"checked":""}></td>
+    <td><input value="${item.produto||""}"></td>
+    <td><input value="${item.desc||""}"></td>
+    <td><input type="number" value="${item.qtde||0}"></td>
+    <td><input type="number" step="0.01" value="${item.valor||0}"></td>
+    <td class="total">${formatar((item.qtde||0)*(item.valor||0))}</td>
+    <td><button class="del">❌</button></td>
+  `;
+
+  const inputs = tr.querySelectorAll("input");
+  const btnDel = tr.querySelector(".del");
+
+  inputs[0].onchange = e=>{
+    item.comprou = e.target.checked;
+    salvar();
+  };
+
+  inputs[1].oninput = e=>{
+    item.produto = e.target.value;
+    salvar();
+  };
+
+  inputs[2].oninput = e=>{
+    item.desc = e.target.value;
+    salvar();
+  };
+
+  inputs[3].oninput = e=>{
+    item.qtde = +e.target.value || 0;
+    calcularLinha(item,tr);
+    salvar();
+  };
+
+  inputs[4].oninput = e=>{
+    item.valor = +e.target.value || 0;
+    calcularLinha(item,tr);
+    salvar();
+  };
+
+  btnDel.onclick = ()=>{
+    if(confirm("Apagar este item?")){
+      itens.splice(i,1);
+      salvar();
+      render();
+    }
+  };
+
+  return tr;
+}
+
 function render(){
-  tbody.innerHTML="";
+  tbody.innerHTML = "";
   itens.forEach((item,i)=>{
-    const tr=document.createElement("tr");
-    if(item.comprou) tr.classList.add("comprado");
-
-    tr.innerHTML=`
-      <td><input type="checkbox" ${item.comprou?"checked":""}></td>
-      <td><input value="${item.produto||""}"></td>
-      <td><input value="${item.desc||""}"></td>
-      <td><input type="number" value="${item.qtde||0}"></td>
-      <td><input type="number" step="0.01" value="${item.valor||0}"></td>
-      <td>${formatar((item.qtde||0)*(item.valor||0))}</td>
-    `;
-
-    const inp=tr.querySelectorAll("input");
-    inp[0].onchange=e=>{ item.comprou=e.target.checked; autoSalvar(); };
-    inp[1].oninput=e=>{ item.produto=e.target.value; autoSalvar(); };
-    inp[2].oninput=e=>{ item.desc=e.target.value; autoSalvar(); };
-    inp[3].oninput=e=>{ item.qtde=+e.target.value||0; autoSalvar(); render(); };
-    inp[4].oninput=e=>{ item.valor=+e.target.value||0; autoSalvar(); render(); };
-
-    tbody.appendChild(tr);
+    tbody.appendChild(criarLinha(item,i));
   });
-  calcular();
 }
 
-/* ===== LOGIN ===== */
-document.getElementById("entrarBtn").onclick = async ()=>{
-  usuario = document.getElementById("usuarioInput")
-    .value.trim().toLowerCase();
-
-  if(!usuario) return alert("Digite um nome");
-
-  await carregarServidor();
-  ouvirMudancas();
-  document.getElementById("login").style.display="none";
-};
-
-/* ===== BOTÕES ===== */
-document.getElementById("add").onclick=()=>{
+document.getElementById("add").onclick = ()=>{
   itens.push({comprou:false,produto:"",desc:"",qtde:1,valor:0});
-  autoSalvar(); render();
+  salvar();
+  render();
 };
 
-document.getElementById("limpar").onclick=()=>{
-  itens.forEach(i=>i.comprou=false);
-  autoSalvar(); render();
-};
+document.getElementById("saveBtn").onclick = salvar;
 
-document.getElementById("saveBtn").onclick=salvar;
-
-limiteInput.oninput=e=>{
-  limite=+e.target.value||0;
-  autoSalvar(); calcular();
-};
-</script>
-
-<!-- ===== SERVICE WORKER ===== -->
-<script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js");
-  });
-}
+ouvir();
 </script>
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
