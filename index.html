@@ -239,7 +239,7 @@ function criarLinha(item,i){
   inputs[2].oninput=e=>{ item.desc=e.target.value; salvar(); };
 
   inputs[3].oninput=e=>{
-    item.qtde=Math.max(1,+e.target.value||1);
+    item.qtde=Math.max(0,+e.target.value||0);
     atualizar(); salvar();
   };
 
@@ -334,3 +334,4 @@ document.getElementById("saveBtn").onclick=salvar;
 </script>
 </body>
 </html>
+
