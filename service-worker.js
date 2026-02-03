@@ -3,8 +3,7 @@ const CACHE_NAME = "lista-compras-v1";
 const FILES_TO_CACHE = [
   "./",
   "./index.html",
-  "./manifest.json",
-  "./service-worker.js"
+  "./manifest.json"
 ];
 
 self.addEventListener("install", event => {
@@ -17,11 +16,7 @@ self.addEventListener("install", event => {
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(
-        keys.map(key => {
-          if (key !== CACHE_NAME) return caches.delete(key);
-        })
-      )
+      Promise.all(keys.map(k => k !== CACHE_NAME && caches.delete(k)))
     )
   );
   self.clients.claim();
@@ -29,8 +24,6 @@ self.addEventListener("activate", event => {
 
 self.addEventListener("fetch", event => {
   event.respondWith(
-    caches.match(event.request).then(resp => {
-      return resp || fetch(event.request);
-    })
+    fetch(event.request).catch(() => caches.match(event.request))
   );
 });
